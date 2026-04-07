@@ -161,7 +161,110 @@ def parse_skill_frontmatter(skill_md_path: pathlib.Path) -> dict:
     return {}
 
 
-def main():
+def check_skill_prerequisites(config: dict, skill_name: str) -> str:
+    """Check if a skill's prerequisites are met."""
+    skills_dir = get_skills_dir(config)
+    skill_path = skills_dir / skill_name / "SKILL.md"
+
+    if not skill_path.exists():
+        return f"❌ FAIL: Skill '{skill_name}' not found at {skill_path}\n  → Check that the skill is installed and active in config.yaml"
+
+    try:
+        content = skill_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return f"❌ FAIL: Cannot read skill file: {e}"
+
+    checks = []
+    all_passed = True
+
+    checks.append(("Skill file exists", True, ""))
+
+    frontmatter = parse_skill_frontmatter(skill_path)
+    if frontmatter:
+        checks.append(("Valid SKILL.md frontmatter", True, f"name={frontmatter.get('name', '?')}, version={frontmatter.get('metadata', {}).get('version', '?')}"))
+
+    if "minimax" in skill_name.lower() or "vision" in skill_name.lower():
+        mcp_check = check_minimax_mcp()
+        checks.append(("MiniMax MCP (minimax-coding-plan-mcp)", mcp_check["passed"], mcp_check["message"]))
+        if not mcp_check["passed"]:
+            all_passed = False
+
+    if "minimax" in skill_name.lower() or "vision" in skill_name.lower():
+        key_check = check_api_key()
+        checks.append(("MINIMAX_API_KEY configured", key_check["passed"], key_check["message"]))
+        if not key_check["passed"]:
+            all_passed = False
+
+    lines = [f"# Prerequisite Check: {skill_name}"]
+    lines.append("")
+    for desc, passed, msg in checks:
+        status = "✅" if passed else "❌"
+        line = f"{status} {desc}"
+        if msg:
+            line += f" — {msg}"
+        lines.append(line)
+
+    lines.append("")
+    if all_passed:
+        lines.append("🎉 All prerequisites met! The skill should work correctly.")
+    else:
+        lines.append("⚠️  Some prerequisites are not met. Fix the issues above before using this skill.")
+
+    return "\n".join(lines)
+
+
+def check_minimax_mcp() -> dict:
+    """Check if MiniMax MCP server is likely available."""
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["uvx", "minimax-coding-plan-mcp", "--help"],
+            capture_output=True,
+            timeout=10,
+            text=True
+        )
+        if result.returncode == 0 or "minimax" in result.stdout.lower() or "minimax" in result.stderr.lower():
+            return {"passed": True, "message": "uvx found, MCP server can be launched"}
+    except FileNotFoundError:
+        pass
+    except Exception:
+        pass
+
+    try:
+        result = subprocess.run(
+            ["which", "minimax-coding-plan-mcp"],
+            capture_output=True,
+            timeout=5,
+            text=True
+        )
+        if result.returncode == 0:
+            return {"passed": True, "message": "minimax-coding-plan-mcp found in PATH"}
+    except Exception:
+        pass
+
+    return {
+        "passed": False,
+        "message": "uvx not found and minimax-coding-plan-mcp not in PATH. Install: curl -LsSf https://astral.sh/uv/install.sh | sh && uvx install minimax-coding-plan-mcp"
+    }
+
+
+def check_api_key() -> dict:
+    """Check if MINIMAX_API_KEY is configured in the environment or config."""
+    key = os.environ.get("MINIMAX_API_KEY", "")
+    if key:
+        masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
+        return {"passed": True, "message": f"found (starts with {masked})"}
+
+    config_path = pathlib.Path(os.environ.get("AUTO_SKILL_LOADER_CONFIG", str(DEFAULT_CONFIG_PATH)))
+    if config_path.exists():
+        config = load_config(config_path)
+        if config.get("minimax_api_key"):
+            return {"passed": True, "message": "found in config.yaml"}
+
+    return {"passed": False, "message": "MINIMAX_API_KEY not set. Add it to your OpenCode MCP config under MiniMax.environment"}
+
+
+def create_app():
     config_path = pathlib.Path(
         os.environ.get("AUTO_SKILL_LOADER_CONFIG", str(DEFAULT_CONFIG_PATH))
     )
@@ -204,57 +307,71 @@ def main():
         return [
             Tool(
                 name="list_skills",
-                description="List all available skills found in skills_dir. Shows name, description, active status, and path. Use this to discover what skills are installed on this machine.",
+                description="List all available skills found in skills_dir. Shows name, description, active status, and path.",
                 inputSchema={"type": "object", "properties": {}, "required": []},
             ),
             Tool(
                 name="activate_skill",
-                description="Add a skill to the user's approved list. The skill will be auto-loaded via skills://active on next session start. Changes persist to config.yaml.",
+                description="Add a skill to the user's approved list. Persists to config.yaml.",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "name": {
                             "type": "string",
                             "description": "Name of the skill to activate",
-                        }
+                        },
                     },
                     "required": ["name"],
                 },
             ),
             Tool(
                 name="deactivate_skill",
-                description="Remove a skill from the user's approved list. It will no longer be auto-loaded on next session start. Changes persist to config.yaml.",
+                description="Remove a skill from the user's approved list. Persists to config.yaml.",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "name": {
                             "type": "string",
                             "description": "Name of the skill to deactivate",
-                        }
+                        },
                     },
                     "required": ["name"],
                 },
             ),
             Tool(
                 name="get_skill_info",
-                description="Get detailed info about a specific skill — name, description, active status, and file path.",
+                description="Get detailed info about a specific skill.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "name": {"type": "string", "description": "Name of the skill"}
+                        "name": {"type": "string", "description": "Name of the skill"},
                     },
                     "required": ["name"],
                 },
             ),
             Tool(
                 name="get_active_skills",
-                description="Get the list of currently active (approved) skill names.",
+                description="Get the list of currently active skill names.",
                 inputSchema={"type": "object", "properties": {}, "required": []},
             ),
             Tool(
                 name="suggest_skills",
-                description="Called automatically when user has no active skills configured. Scans available skills and suggests which ones to activate based on common use cases. Helps users get started.",
+                description="Suggests skills to activate when user has none configured.",
                 inputSchema={"type": "object", "properties": {}, "required": []},
+            ),
+            Tool(
+                name="check_prerequisites",
+                description="Check if a skill's prerequisites are met. Validates MCP tool availability, API keys, and configuration. Returns pass/fail with specific error details.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "skill_name": {
+                            "type": "string",
+                            "description": "Name of the skill to check prerequisites for",
+                        },
+                    },
+                    "required": ["skill_name"],
+                },
             ),
         ]
 
@@ -269,16 +386,15 @@ def main():
                 return [
                     TextContent(
                         type="text",
-                        text=f"No skills found in {config.get('skills_dir')}.\n"
-                        f"Add skills there or configure a different skills_dir in config.yaml.",
+                        text=f"No skills found in {config.get('skills_dir')}.\nAdd skills there or configure a different skills_dir in config.yaml.",
                     )
                 ]
             lines = [f"# Available Skills ({len(skills)} found)\n"]
             for s in skills:
                 status = "✅ active" if s["active"] else "○ inactive"
-                lines.append(f"- **{s['name']}** ({status})")
-                lines.append(f"  {s['description']}")
-                lines.append(f"  path: {s['path']}\n")
+                lines.append(
+                    f"- **{s['name']}** ({status})\n  {s['description']}\n  path: {s['path']}\n"
+                )
             return [TextContent(type="text", text="\n".join(lines))]
 
         elif name == "activate_skill":
@@ -344,12 +460,10 @@ def main():
             skill_name = arguments["name"]
             available = list_available_skills(config)
             skill = next((s for s in available if s["name"] == skill_name), None)
-
             if not skill:
                 return [
                     TextContent(type="text", text=f"Skill '{skill_name}' not found.")
                 ]
-
             return [
                 TextContent(
                     type="text", text=yaml.dump(skill, default_flow_style=False)
@@ -364,30 +478,23 @@ def main():
                         text="No active skills. Use list_skills to see available, then activate_skill to add some.",
                     )
                 ]
-            lines = [f"# Active Skills ({len(active)})\n"]
-            for name in active:
-                lines.append(f"- {name}")
+            lines = [f"# Active Skills ({len(active)})\n"] + [f"- {n}" for n in active]
             return [TextContent(type="text", text="\n".join(lines))]
 
         elif name == "suggest_skills":
             available = list_available_skills(config)
-            active_set = set(active)
-
             if not available:
                 return [
                     TextContent(
                         type="text",
-                        text="No skills found in your skills_dir.\n"
-                        "Install some skills from skills.sh or create your own SKILL.md files.",
+                        text="No skills found in your skills_dir.\nInstall some skills from skills.sh or create your own SKILL.md files.",
                     )
                 ]
-
             if active:
                 return [
                     TextContent(
                         type="text",
-                        text=f"You already have {len(active)} active skills: {', '.join(active)}\n"
-                        "Use list_skills to see all available, or deactivate_skill to remove any.",
+                        text=f"You already have {len(active)} active skills: {', '.join(active)}\nUse list_skills to see all available.",
                     )
                 ]
 
@@ -409,24 +516,33 @@ def main():
             suggested = (
                 suggestions[:6] if suggestions else [s["name"] for s in available[:6]]
             )
-
             return [
                 TextContent(
                     type="text",
-                    text=f"# Getting Started\n"
-                    f"You have {len(available)} skills available but none are active yet.\n\n"
-                    f"Suggested skills to activate:\n"
-                    + "\n".join(f"- {name}" for name in suggested)
-                    + f"\n\nTo activate: activate_skill(name='skill-name')\n"
-                    f"To activate all suggestions at once, add them to config.yaml manually.",
+                    text=f"# Getting Started\nYou have {len(available)} skills available but none are active yet.\n\nSuggested skills to activate:\n"
+                    + "\n".join(f"- {n}" for n in suggested)
+                    + f"\n\nTo activate: activate_skill(name='skill-name')",
                 )
             ]
+
+        elif name == "check_prerequisites":
+            skill_name = arguments["skill_name"]
+            result = check_skill_prerequisites(config, skill_name)
+            return [TextContent(type="text", text=result)]
 
         else:
             raise ValueError(f"Unknown tool: {name}")
 
-    app.run()
+    return app
 
 
 if __name__ == "__main__":
-    main()
+    import mcp.server.stdio
+    import asyncio
+
+    async def run():
+        app = create_app()
+        async with mcp.server.stdio.stdio_server() as streams:
+            await app.run(streams[0], streams[1], app.create_initialization_options())
+
+    asyncio.run(run())
