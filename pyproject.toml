@@ -1,0 +1,14 @@
+[project]
+name = "auto-skill-loader"
+version = "1.0.0"
+description = "MCP server that auto-loads approved skills into agent sessions at startup via skills://active resource"
+requires-python = ">=3.9"
+dependencies = ["mcp>=0.9.0", "pyyaml>=6.0"]
+
+[project.scripts]
+auto-skill-loader = "server:main"
+
+[tool.mcp]
+name = "auto-skill-loader"
+description = "Auto-load approved skills into agent sessions"
+version = "1.0.0"
