@@ -72,7 +72,7 @@ def save_config(config_path: pathlib.Path, config: dict) -> None:
 
 def get_skills_dir(config: dict) -> pathlib.Path:
     """Resolve skills directory path."""
-    path = pathlib.Path(config.get("skills_dir", str(DEFAULT_SKILLS_DIR)))
+    path = pathlib.Path(config.get("skills_dir", str(DEFAULT_SKILLS_DIR))).expanduser()
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     return path
@@ -181,17 +181,31 @@ def check_skill_prerequisites(config: dict, skill_name: str) -> str:
 
     frontmatter = parse_skill_frontmatter(skill_path)
     if frontmatter:
-        checks.append(("Valid SKILL.md frontmatter", True, f"name={frontmatter.get('name', '?')}, version={frontmatter.get('metadata', {}).get('version', '?')}"))
+        checks.append(
+            (
+                "Valid SKILL.md frontmatter",
+                True,
+                f"name={frontmatter.get('name', '?')}, version={frontmatter.get('metadata', {}).get('version', '?')}",
+            )
+        )
 
     if "minimax" in skill_name.lower() or "vision" in skill_name.lower():
         mcp_check = check_minimax_mcp()
-        checks.append(("MiniMax MCP (minimax-coding-plan-mcp)", mcp_check["passed"], mcp_check["message"]))
+        checks.append(
+            (
+                "MiniMax MCP (minimax-coding-plan-mcp)",
+                mcp_check["passed"],
+                mcp_check["message"],
+            )
+        )
         if not mcp_check["passed"]:
             all_passed = False
 
     if "minimax" in skill_name.lower() or "vision" in skill_name.lower():
         key_check = check_api_key()
-        checks.append(("MINIMAX_API_KEY configured", key_check["passed"], key_check["message"]))
+        checks.append(
+            ("MINIMAX_API_KEY configured", key_check["passed"], key_check["message"])
+        )
         if not key_check["passed"]:
             all_passed = False
 
@@ -208,7 +222,9 @@ def check_skill_prerequisites(config: dict, skill_name: str) -> str:
     if all_passed:
         lines.append("🎉 All prerequisites met! The skill should work correctly.")
     else:
-        lines.append("⚠️  Some prerequisites are not met. Fix the issues above before using this skill.")
+        lines.append(
+            "⚠️  Some prerequisites are not met. Fix the issues above before using this skill."
+        )
 
     return "\n".join(lines)
 
@@ -217,13 +233,18 @@ def check_minimax_mcp() -> dict:
     """Check if MiniMax MCP server is likely available."""
     try:
         import subprocess
+
         result = subprocess.run(
             ["uvx", "minimax-coding-plan-mcp", "--help"],
             capture_output=True,
             timeout=10,
-            text=True
+            text=True,
         )
-        if result.returncode == 0 or "minimax" in result.stdout.lower() or "minimax" in result.stderr.lower():
+        if (
+            result.returncode == 0
+            or "minimax" in result.stdout.lower()
+            or "minimax" in result.stderr.lower()
+        ):
             return {"passed": True, "message": "uvx found, MCP server can be launched"}
     except FileNotFoundError:
         pass
@@ -235,7 +256,7 @@ def check_minimax_mcp() -> dict:
             ["which", "minimax-coding-plan-mcp"],
             capture_output=True,
             timeout=5,
-            text=True
+            text=True,
         )
         if result.returncode == 0:
             return {"passed": True, "message": "minimax-coding-plan-mcp found in PATH"}
@@ -244,7 +265,7 @@ def check_minimax_mcp() -> dict:
 
     return {
         "passed": False,
-        "message": "uvx not found and minimax-coding-plan-mcp not in PATH. Install: curl -LsSf https://astral.sh/uv/install.sh | sh && uvx install minimax-coding-plan-mcp"
+        "message": "uvx not found and minimax-coding-plan-mcp not in PATH. Install: curl -LsSf https://astral.sh/uv/install.sh | sh && uvx install minimax-coding-plan-mcp",
     }
 
 
@@ -255,13 +276,18 @@ def check_api_key() -> dict:
         masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
         return {"passed": True, "message": f"found (starts with {masked})"}
 
-    config_path = pathlib.Path(os.environ.get("AUTO_SKILL_LOADER_CONFIG", str(DEFAULT_CONFIG_PATH)))
+    config_path = pathlib.Path(
+        os.environ.get("AUTO_SKILL_LOADER_CONFIG", str(DEFAULT_CONFIG_PATH))
+    )
     if config_path.exists():
         config = load_config(config_path)
         if config.get("minimax_api_key"):
             return {"passed": True, "message": "found in config.yaml"}
 
-    return {"passed": False, "message": "MINIMAX_API_KEY not set. Add it to your OpenCode MCP config under MiniMax.environment"}
+    return {
+        "passed": False,
+        "message": "MINIMAX_API_KEY not set. Add it to your OpenCode MCP config under MiniMax.environment",
+    }
 
 
 def create_app():
