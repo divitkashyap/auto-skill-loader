@@ -113,6 +113,65 @@ skills_dir: ~/.config/auto-skill-loader/skills
 | `get_skill_info` | Get details about a specific skill |
 | `get_active_skills` | List currently active skill names |
 | `suggest_skills` | If no skills are active, suggests common ones to get started |
+| `check_prerequisites` | Validate a skill's dependencies (MCP tools, API keys, env vars) |
+
+## Bonus: MiniMax Vision & Web Search Proxy
+
+auto-skill-loader also exposes two tools that proxy to `minimax-coding-plan-mcp` with a **working stdio transport**:
+
+| Tool | What it does |
+|---|---|
+| `minimax_understand_image` | Analyze images (JPEG, PNG, GIF, WebP up to 20MB) |
+| `minimax_web_search` | Web search using MiniMax |
+
+### The OpenCode MCP Bug
+
+When OpenCode's built-in `minimax-coding-plan-mcp` MCP integration (`minimax-token-plan`) is configured, the `understand_image` tool fails with:
+
+```
+API Error: login fail: Please carry the API secret key in the 'Authorization' field
+```
+
+This happens even when:
+- ✅ `MINIMAX_API_KEY` / `MINIMAX_TOKEN_PLAN_KEY` is set correctly
+- ✅ API key is valid (same key works via direct API calls)
+- ✅ Token Plan has available vision quota
+
+**Root cause:** OpenCode's stdio transport for local MCP servers sends messages in a way that breaks the MCP protocol — likely batched writes without proper flush between JSON-RPC messages. Direct subprocess tests with sequential writes + flush() work fine.
+
+**The fix:** Our proxy tools in auto-skill-loader use proper sequential stdio communication, bypassing OpenCode's broken transport layer.
+
+### Setup
+
+1. Set your MiniMax Token Plan key in `~/.config/opencode/.env`:
+```bash
+MINIMAX_TOKEN_PLAN_KEY=sk-cp-your-key-here
+```
+
+2. Add auto-skill-loader to `~/.config/opencode/opencode.json`:
+```json
+{
+  "mcp": {
+    "auto-skill-loader": {
+      "type": "local",
+      "command": ["/path/to/venv/bin/python", "-m", "server"],
+      "enabled": true
+    }
+  }
+}
+```
+
+3. **Critical:** If you have `minimax-coding-plan-mcp` configured directly in opencode.json (the `minimax-token-plan` entry), **remove or disable it** — its broken stdio transport will cause "login fail" errors. The proxy tools in auto-skill-loader replace it entirely.
+
+4. Restart OpenCode and verify: `/ask Do you have auto-skill-loader_minimax_understand_image available?`
+
+### Diagnosis
+
+If you see "login fail" errors after setup:
+
+1. **Disable the broken minimax MCP** — ensure `"minimax-token-plan": { "enabled": false }` or remove it entirely
+2. **Restart OpenCode completely** — MCP servers are re-spawned on each session
+3. **Check with:** `/ask Call minimax_understand_image with image_source="/any/real/image.png" and prompt="test"`
 
 ## Resources
 
