@@ -17,6 +17,7 @@ import os
 import sys
 import yaml
 import pathlib
+import asyncio
 from datetime import datetime
 
 try:
@@ -290,6 +291,82 @@ def check_api_key() -> dict:
     }
 
 
+async def handle_minimax_tool(name: str, arguments: dict) -> list:
+    import subprocess
+    import json
+
+    api_key = os.environ.get("MINIMAX_TOKEN_PLAN_KEY") or os.environ.get(
+        "MINIMAX_API_KEY", ""
+    )
+    api_host = os.environ.get("MINIMAX_API_HOST", "https://api.minimax.io")
+
+    stdin_data = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": "1",
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "auto-skill-loader", "version": "1.0"},
+                },
+            }
+        )
+        + "\n"
+        + json.dumps(
+            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
+        )
+        + "\n"
+        + json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": "2",
+                "method": "tools/call",
+                "params": {"name": name, "arguments": arguments},
+            }
+        )
+        + "\n"
+    )
+
+    cmd = f'''env MINIMAX_API_KEY="{api_key}" MINIMAX_API_HOST="{api_host}" uvx minimax-coding-plan-mcp -y << 'MCPEOF'
+{stdin_data}MCPEOF'''
+
+    proc = subprocess.Popen(
+        cmd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    stdout, stderr = await asyncio.get_event_loop().run_in_executor(
+        None, lambda: proc.communicate(timeout=60)
+    )
+
+    response_text = stdout.decode().strip()
+    for line in response_text.split("\n"):
+        if not line.strip():
+            continue
+        try:
+            resp = json.loads(line)
+            resp_id = resp.get("id")
+            if "result" in resp and resp_id == "2":
+                content = resp["result"].get("content", [])
+                return [
+                    TextContent(type=c.get("type", "text"), text=c.get("text", ""))
+                    for c in content
+                ]
+            elif "error" in resp:
+                error = resp["error"]
+                raise Exception(
+                    f"Minimax API error: {error.get('message', str(error))}"
+                )
+        except json.JSONDecodeError:
+            continue
+
+    raise Exception("No valid response from Minimax MCP server")
+
+
 def create_app():
     config_path = pathlib.Path(
         os.environ.get("AUTO_SKILL_LOADER_CONFIG", str(DEFAULT_CONFIG_PATH))
@@ -399,12 +476,46 @@ def create_app():
                     "required": ["skill_name"],
                 },
             ),
+            Tool(
+                name="minimax_understand_image",
+                description="Analyze images using MiniMax vision API. Provide a prompt and image_source (URL or local file path).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "Question or analysis request for the image",
+                        },
+                        "image_source": {
+                            "type": "string",
+                            "description": "Image URL or local file path",
+                        },
+                    },
+                    "required": ["prompt", "image_source"],
+                },
+            ),
+            Tool(
+                name="minimax_web_search",
+                description="Search the web using MiniMax.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"},
+                    },
+                    "required": ["query"],
+                },
+            ),
         ]
 
     @app.call_tool()
     async def call_tool(name: str, arguments: dict):
         config = load_config(config_path)
         active = config.get("active_skills", [])
+
+        if name == "minimax_understand_image":
+            return await handle_minimax_tool("understand_image", arguments)
+        elif name == "minimax_web_search":
+            return await handle_minimax_tool("web_search", arguments)
 
         if name == "list_skills":
             skills = list_available_skills(config)
