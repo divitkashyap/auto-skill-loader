@@ -205,7 +205,7 @@ def check_skill_prerequisites(config: dict, skill_name: str) -> str:
     if "minimax" in skill_name.lower() or "vision" in skill_name.lower():
         key_check = check_api_key()
         checks.append(
-            ("MINIMAX_API_KEY configured", key_check["passed"], key_check["message"])
+            ("MINIMAX API key (Token Plan)", key_check["passed"], key_check["message"])
         )
         if not key_check["passed"]:
             all_passed = False
@@ -271,8 +271,10 @@ def check_minimax_mcp() -> dict:
 
 
 def check_api_key() -> dict:
-    """Check if MINIMAX_API_KEY is configured in the environment or config."""
-    key = os.environ.get("MINIMAX_API_KEY", "")
+    """Check if MINIMAX_TOKEN_PLAN_KEY or MINIMAX_API_KEY is configured."""
+    key = os.environ.get("MINIMAX_TOKEN_PLAN_KEY") or os.environ.get(
+        "MINIMAX_API_KEY", ""
+    )
     if key:
         masked = key[:8] + "..." + key[-4:] if len(key) > 12 else "***"
         return {"passed": True, "message": f"found (starts with {masked})"}
@@ -287,7 +289,7 @@ def check_api_key() -> dict:
 
     return {
         "passed": False,
-        "message": "MINIMAX_API_KEY not set. Add it to your OpenCode MCP config under MiniMax.environment",
+        "message": "MINIMAX_TOKEN_PLAN_KEY not set. Add it to your OpenCode MCP config under MiniMax.environment or to ~/.config/opencode/.env",
     }
 
 
@@ -300,44 +302,48 @@ async def handle_minimax_tool(name: str, arguments: dict) -> list:
     )
     api_host = os.environ.get("MINIMAX_API_HOST", "https://api.minimax.io")
 
-    stdin_data = (
-        json.dumps(
-            {
-                "jsonrpc": "2.0",
-                "id": "1",
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "capabilities": {},
-                    "clientInfo": {"name": "auto-skill-loader", "version": "1.0"},
-                },
-            }
-        )
-        + "\n"
-        + json.dumps(
-            {"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}
-        )
-        + "\n"
-        + json.dumps(
-            {
-                "jsonrpc": "2.0",
-                "id": "2",
-                "method": "tools/call",
-                "params": {"name": name, "arguments": arguments},
-            }
-        )
-        + "\n"
-    )
+    # Build JSON-RPC messages as newline-delimited JSON
+    stdin_messages = [
+        {
+            "jsonrpc": "2.0",
+            "id": "1",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {},
+                "clientInfo": {"name": "auto-skill-loader", "version": "1.0"},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+            "params": {},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": "2",
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        },
+    ]
+    stdin_data = "\n".join(json.dumps(m) for m in stdin_messages) + "\n"
 
-    cmd = f'''env MINIMAX_API_KEY="{api_key}" MINIMAX_API_HOST="{api_host}" uvx minimax-coding-plan-mcp -y << 'MCPEOF'
-{stdin_data}MCPEOF'''
+    # Build environment for subprocess — API key NOT on command line
+    env = os.environ.copy()
+    env["MINIMAX_API_KEY"] = api_key
+    env["MINIMAX_API_HOST"] = api_host
 
     proc = subprocess.Popen(
-        cmd,
-        shell=True,
+        ["uvx", "minimax-coding-plan-mcp", "-y"],
+        env=env,  # Pass env vars directly, not via command line
+        stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
+
+    # Write stdin data explicitly and flush to avoid buffering issues
+    proc.stdin.write(stdin_data.encode("utf-8"))
+    proc.stdin.close()
 
     stdout, stderr = await asyncio.get_event_loop().run_in_executor(
         None, lambda: proc.communicate(timeout=60)
