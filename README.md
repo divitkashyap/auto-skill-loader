@@ -2,11 +2,9 @@
 
 **Give your AI agent a persistent skill library it auto-loads at session start.**
 
-> ⚠️ **Status update (April 2026):** This project was built to work around an OpenCode MCP stdio transport bug. OpenCode sends JSON-RPC messages in a broken way that causes "login fail" errors even with valid API keys. Our proxy tools use proper stdio communication to bypass this.
+> ⚠️ **OpenCode image workflow note (April 2026):** OpenCode has two issues with images via MCP: (1) its stdio transport for local MCP servers is broken (causes "login fail" errors) — our proxy tools work around this, but (2) pasted images render visually but don't expose real file paths to tools (they appear as filenames). For images in OpenCode, you must give an actual file path rather than pasting. Claude Code doesn't have either of these issues.
 >
-> **If you're using Claude Code:** You likely don't need this. Claude Code's built-in `minimax-token-plan` MCP integration handles images natively without the broken transport issue. Just configure `minimax-token-plan` directly in Claude Code instead.
->
-> **If you're using OpenCode:** The proxy tools here do work around OpenCode's broken stdio transport, but OpenCode also has trouble exposing real image paths when images are pasted (they show as filenames rather than file paths). For full image support in OpenCode, you still need to give the agent an actual file path rather than pasting.
+> **Core value prop:** This tool was built so skills auto-load at session start in OpenCode — no manual `use_skill` invocation needed. The proxy tools (vision + web search) are a bonus. If you only need vision in Claude Code, use `minimax-token-plan` directly instead.
 
 `mcp-name: io.github.divitkashyap/auto-skill-loader`
 
@@ -19,11 +17,9 @@
 
 ## Why
 
-Most skill systems require the agent to:
-- Explicitly call a `use_skill` tool, or
-- Guess based on conversation patterns (unreliable)
+The main problem: In OpenCode, skills don't auto-load — the agent has to explicitly invoke them or rely on unreliable fuzzy matching. auto-skill-loader solves this by exposing your skill library as an MCP resource that gets read at session start. Deterministic, no guessing.
 
-auto-skill-loader solves this by using the MCP **resource at session init** pattern — deterministic, no guessing.
+**Bonus:** Our proxy tools also work around OpenCode's broken MCP stdio transport for the MiniMax vision and web search tools.
 
 ## Installation
 
@@ -85,10 +81,12 @@ claude mcp add -s user --transport stdio -e MINIMAX_TOKEN_PLAN_KEY=sk-cp-YOUR-KE
 
 ## Tested On
 
-| Host | Status | Notes |
-|---|---|---|
-| Claude Code (macOS) | ✅ Works | Use `minimax-token-plan` MCP directly instead — no proxy needed |
-| OpenCode (macOS) | ✅ Proxy works | Proxy tools bypass OpenCode's broken stdio transport, but paste workflow still broken |
+| Host | Skill Auto-Load | Vision Proxy | Image Paste | Notes |
+|---|---|---|---|---|
+| Claude Code (macOS) | ✅ | ❌ Not needed | ✅ | Use `minimax-token-plan` MCP directly instead |
+| OpenCode (macOS) | ✅ | ✅ Works | ❌ Broken | Give file paths instead of pasting |
+
+**Skill auto-loading confirmed working on both hosts.** The vision proxy bypasses OpenCode's broken stdio transport, but image paste-to-path is a separate rendering issue in OpenCode that requires using file paths.
 
 Other MCP-compatible hosts (Cursor, Zed, etc.) should work with the same configuration — contributions welcome.
 
