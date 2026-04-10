@@ -1,15 +1,44 @@
 [project]
 name = "auto-skill-loader"
 version = "1.0.0"
-description = "MCP server that auto-loads approved skills into agent sessions at startup via skills://active resource"
+description = "MCP server that auto-loads approved skills into agent sessions and provides MiniMax vision + search proxy tools"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "divitkashyap"}
+]
 requires-python = ">=3.9"
-dependencies = ["mcp>=0.9.0", "pyyaml>=6.0"]
+dependencies = [
+    "mcp>=0.9.0",
+    "pyyaml>=6.0",
+]
+
+keywords = ["mcp", "model-context-protocol", "skills", "auto-load", "minimax", "vision", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio"]
 
 [project.scripts]
-auto-skill-loader = "src.server:main"
+auto-skill-loader = "auto_skill_loader.server:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.mcp]
 name = "auto-skill-loader"

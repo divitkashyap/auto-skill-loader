@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, str(pathlib.Path(__file__).parent.parent / "src"))
 
-from server import (
+from auto_skill_loader.server import (
     check_api_key,
     check_skill_prerequisites,
     load_config,

@@ -682,7 +682,7 @@ def create_app():
     return app
 
 
-if __name__ == "__main__":
+def main():
     import mcp.server.stdio
     import asyncio
 
@@ -692,3 +692,7 @@ if __name__ == "__main__":
             await app.run(streams[0], streams[1], app.create_initialization_options())
 
     asyncio.run(run())
+
+
+if __name__ == "__main__":
+    main()
