@@ -1,6 +1,6 @@
 [project]
 name = "auto-skill-loader"
-version = "1.0.0"
+version = "1.0.1"
 description = "MCP server that auto-loads approved skills into agent sessions and provides MiniMax vision + search proxy tools"
 readme = "README.md"
 license = {text = "MIT"}
@@ -43,4 +43,4 @@ where = ["src"]
 [tool.mcp]
 name = "auto-skill-loader"
 description = "Auto-load approved skills into agent sessions"
-version = "1.0.0"
+version = "1.0.1"
