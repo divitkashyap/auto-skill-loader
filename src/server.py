@@ -341,9 +341,16 @@ async def handle_minimax_tool(name: str, arguments: dict) -> list:
         stderr=subprocess.PIPE,
     )
 
-    stdout, stderr = await asyncio.get_event_loop().run_in_executor(
-        None, lambda: proc.communicate(input=stdin_data.encode("utf-8"), timeout=60)
-    )
+    def run_proc():
+        try:
+            out, err = proc.communicate(input=stdin_data.encode("utf-8"), timeout=120)
+            return out, err
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()
+            return b"", b"Request timed out after 120s"
+
+    stdout, stderr = await asyncio.get_event_loop().run_in_executor(None, run_proc)
 
     response_text = stdout.decode().strip()
     for line in response_text.split("\n"):
