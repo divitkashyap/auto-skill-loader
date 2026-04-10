@@ -335,18 +335,14 @@ async def handle_minimax_tool(name: str, arguments: dict) -> list:
 
     proc = subprocess.Popen(
         ["uvx", "minimax-coding-plan-mcp", "-y"],
-        env=env,  # Pass env vars directly, not via command line
+        env=env,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )
 
-    # Write stdin data explicitly and flush to avoid buffering issues
-    proc.stdin.write(stdin_data.encode("utf-8"))
-    proc.stdin.close()
-
     stdout, stderr = await asyncio.get_event_loop().run_in_executor(
-        None, lambda: proc.communicate(timeout=60)
+        None, lambda: proc.communicate(input=stdin_data.encode("utf-8"), timeout=60)
     )
 
     response_text = stdout.decode().strip()
