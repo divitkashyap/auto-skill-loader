@@ -2,9 +2,7 @@
 
 **Give your AI agent a persistent skill library it auto-loads at session start.**
 
-> ⚠️ **OpenCode image workflow note (April 2026):** OpenCode has two issues with images via MCP: (1) its stdio transport for local MCP servers is broken (causes "login fail" errors) — our proxy tools work around this, but (2) pasted images render visually but don't expose real file paths to tools (they appear as filenames). For images in OpenCode, you must give an actual file path rather than pasting. Claude Code doesn't have either of these issues.
->
-> **Core value prop:** This tool was built so skills auto-load at session start in OpenCode — no manual `use_skill` invocation needed. The proxy tools (vision + web search) are a bonus. If you only need vision in Claude Code, use `minimax-token-plan` directly instead.
+> **OpenCode image note:** OpenCode doesn't yet expose real file paths when you paste images — the agent sees a filename instead. Workaround: give the agent an actual file path instead of pasting. Skills auto-load at session start as expected.
 
 `mcp-name: io.github.divitkashyap/auto-skill-loader`
 
