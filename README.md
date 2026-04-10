@@ -2,6 +2,8 @@
 
 **Give your AI agent a persistent skill library it auto-loads at session start.**
 
+`mcp-name: io.github.divitkashyap/auto-skill-loader`
+
 auto-skill-loader is an MCP server that exposes your pre-approved skills via a `skills://active` resource. Instead of manually invoking skills or relying on fuzzy pattern matching, your agent reads this resource at session startup and automatically has all your approved skills in context.
 
 ## How it works
