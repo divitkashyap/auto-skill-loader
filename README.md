@@ -167,6 +167,8 @@ auto-skill-loader also exposes two tools that proxy to `minimax-coding-plan-mcp`
 | `minimax_understand_image` | Analyze images (JPEG, PNG, GIF, WebP up to 20MB) |
 | `minimax_web_search` | Web search using MiniMax |
 
+**Note:** For vision specifically, [mmx-cli](https://github.com/MiniMax-AI/cli) is now the recommended approach — it's a direct REST call to MiniMax VLM, no MCP transport issues, and handles URLs natively. These proxy tools are useful if you want a unified MCP interface for both skill loading and vision.
+
 ### The OpenCode MCP Bug
 
 When OpenCode's built-in `minimax-coding-plan-mcp` MCP integration (`minimax-token-plan`) is configured, the `understand_image` tool fails with:
