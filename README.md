@@ -63,24 +63,35 @@ Add to `~/.config/opencode/opencode.json`:
 
 ### Claude Code
 
+**Note:** Claude Code requires a specific JSON format via `add-json`:
+
 ```bash
-claude mcp add -s user auto-skill-loader -- uvx auto-skill-loader -y
+claude mcp add-json -s user auto-skill-loader '{"type":"stdio","command":"/FULL/PATH/TO/python","args":["-m","server"],"env":{"MINIMAX_TOKEN_PLAN_KEY":"sk-cp-YOUR-KEY-HERE"}}'
 ```
 
-### Cursor
+Replace `/FULL/PATH/TO/python` with the path to your Python (e.g. `/Users/YOU/auto-skill-loader/.venv/bin/python`).
 
-Add to your MCP settings:
+Or for uvx (requires network on first run):
 
-```json
-{
-  "mcpServers": {
-    "auto-skill-loader": {
-      "command": "uvx",
-      "args": ["auto-skill-loader"]
-    }
-  }
-}
+```bash
+claude mcp add -s user --transport stdio -e MINIMAX_TOKEN_PLAN_KEY=sk-cp-YOUR-KEY auto-skill-loader -- uvx auto-skill-loader
 ```
+
+### Tested Compatibility
+
+| Host | Status | Notes |
+|---|---|---|
+| **Claude Code** | ✅ Tested | macOS, MiniMax-M2.7 model, vision + skills confirmed working |
+| **OpenCode** | ✅ Tested | Linux/macOS, vision + skills confirmed working |
+
+## Tested On
+
+| Host | Status | Verified |
+|---|---|---|
+| Claude Code (macOS) | ✅ Working | Vision tool + skill loading + MiniMax-M2.7 model |
+| OpenCode (macOS) | ✅ Working | Vision tool + skill loading + MiniMax Token Plan |
+
+Other MCP-compatible hosts (Cursor, Zed, etc.) should work with the same configuration — contributions welcome.
 
 ## Setup
 

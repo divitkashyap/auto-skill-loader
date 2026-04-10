@@ -5,8 +5,11 @@ description = "MCP server that auto-loads approved skills into agent sessions at
 requires-python = ">=3.9"
 dependencies = ["mcp>=0.9.0", "pyyaml>=6.0"]
 
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
 [project.scripts]
-auto-skill-loader = "server:main"
+auto-skill-loader = "src.server:main"
 
 [tool.mcp]
 name = "auto-skill-loader"
