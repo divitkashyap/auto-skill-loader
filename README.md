@@ -117,7 +117,7 @@ We actively track the following OpenCode issues:
 - MCP stdio transport for local servers (our proxy tools work around this)
 - Session persistence of skills across restarts
 
-If OpenCode releases a fix for inline image paths, this documentation will be updated.
+If OpenCode releases a fix for inline image paths, this documentation and the vision-analysis skill will be updated to support direct paste workflow. We monitor OpenCode's changelog and release notes — check this repo for updates.
 
 ### Other Known Issues
 
