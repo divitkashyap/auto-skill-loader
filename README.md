@@ -2,9 +2,13 @@
 
 **Give your AI agent a persistent skill library it auto-loads at session start.**
 
-`mcp-name: io.github.divitkashyap/auto-skill-loader`
+> ⚠️ **Status update (April 2026):** This project was built to work around an OpenCode MCP stdio transport bug. OpenCode sends JSON-RPC messages in a broken way that causes "login fail" errors even with valid API keys. Our proxy tools use proper stdio communication to bypass this.
+>
+> **If you're using Claude Code:** You likely don't need this. Claude Code's built-in `minimax-token-plan` MCP integration handles images natively without the broken transport issue. Just configure `minimax-token-plan` directly in Claude Code instead.
+>
+> **If you're using OpenCode:** The proxy tools here do work around OpenCode's broken stdio transport, but OpenCode also has trouble exposing real image paths when images are pasted (they show as filenames rather than file paths). For full image support in OpenCode, you still need to give the agent an actual file path rather than pasting.
 
-auto-skill-loader is an MCP server that exposes your pre-approved skills via a `skills://active` resource. Instead of manually invoking skills or relying on fuzzy pattern matching, your agent reads this resource at session startup and automatically has all your approved skills in context.
+`mcp-name: io.github.divitkashyap/auto-skill-loader`
 
 ## How it works
 
@@ -81,10 +85,10 @@ claude mcp add -s user --transport stdio -e MINIMAX_TOKEN_PLAN_KEY=sk-cp-YOUR-KE
 
 ## Tested On
 
-| Host | Status | Verified |
+| Host | Status | Notes |
 |---|---|---|
-| Claude Code (macOS) | ✅ Working | Vision tool + skill loading + MiniMax-M2.7 model |
-| OpenCode (macOS) | ✅ Working | Vision tool + skill loading + MiniMax Token Plan |
+| Claude Code (macOS) | ✅ Works | Use `minimax-token-plan` MCP directly instead — no proxy needed |
+| OpenCode (macOS) | ✅ Proxy works | Proxy tools bypass OpenCode's broken stdio transport, but paste workflow still broken |
 
 Other MCP-compatible hosts (Cursor, Zed, etc.) should work with the same configuration — contributions welcome.
 
