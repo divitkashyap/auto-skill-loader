@@ -77,13 +77,6 @@ Or for uvx (requires network on first run):
 claude mcp add -s user --transport stdio -e MINIMAX_TOKEN_PLAN_KEY=sk-cp-YOUR-KEY auto-skill-loader -- uvx auto-skill-loader
 ```
 
-### Tested Compatibility
-
-| Host | Status | Notes |
-|---|---|---|
-| **Claude Code** | ✅ Tested | macOS, MiniMax-M2.7 model, vision + skills confirmed working |
-| **OpenCode** | ✅ Tested | Linux/macOS, vision + skills confirmed working |
-
 ## Tested On
 
 | Host | Status | Verified |
@@ -92,6 +85,43 @@ claude mcp add -s user --transport stdio -e MINIMAX_TOKEN_PLAN_KEY=sk-cp-YOUR-KE
 | OpenCode (macOS) | ✅ Working | Vision tool + skill loading + MiniMax Token Plan |
 
 Other MCP-compatible hosts (Cursor, Zed, etc.) should work with the same configuration — contributions welcome.
+
+## Platform Differences & Known Issues
+
+### Image Input: OpenCode vs Claude Code
+
+Both hosts work with `auto-skill-loader` vision tools, but image input behaves differently:
+
+| Host | How images are passed | Recommended workflow |
+|---|---|---|
+| **Claude Code** | Images uploaded to URL automatically → tool receives URL | Paste image directly ✅ works |
+| **OpenCode** | Inline images render visually but may not give tools a real path | Give a file path instead of pasting |
+
+**OpenCode note:** When you paste an image in OpenCode, it may render inline but the agent sees it as a filename string (e.g. `logo.png`) rather than a real filesystem path. This is a known OpenCode rendering behavior.
+
+**Workaround for OpenCode:** Instead of pasting, give the agent the actual file path:
+```
+analyze this image: /path/to/your/image.png
+```
+
+The agent can access local files directly in OpenCode. If the image is only in your clipboard, the agent can extract it to `/tmp/` first.
+
+### What We're Monitoring
+
+We actively track the following OpenCode issues:
+- Inline image rendering (images pasted don't expose real paths to tools)
+- MCP stdio transport for local servers (our proxy tools work around this)
+- Session persistence of skills across restarts
+
+If OpenCode releases a fix for inline image paths, this documentation will be updated.
+
+### Other Known Issues
+
+| Issue | Severity | Workaround |
+|---|---|---|
+| OpenCode inline images show as filename, not path | Medium — affects paste workflow | Use file paths instead |
+| Claude Code auth conflict (ANTHROPIC_AUTH_TOKEN vs managed key) | Low — cosmetic warning | Harmless, can be ignored |
+| First vision call may take 3-5s (uvx download) | Low — one-time | Subsequent calls are ~200ms |
 
 ## Setup
 
