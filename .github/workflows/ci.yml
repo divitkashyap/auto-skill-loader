@@ -15,8 +15,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install dependencies
-        run: pip install pytest pytest-asyncio pyyaml mcp
+      - name: Install package and dependencies
+        run: pip install -e ".[dev]"
       - name: Run tests
         run: pytest tests/ -v
 
@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Syntax check
-        run: python3 -m py_compile src/server.py
+        run: python3 -m py_compile src/auto_skill_loader/server.py
 
   skill-validation:
     runs-on: ubuntu-latest
